@@ -3,49 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тест камери</title>
+    <title>Конференція</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h1>Video</h1>
+<div class="conference-container">
+    <div class="video-container" id="user1">
+        <video id="localVideo" autoplay muted></video>
+        <div class="controls">
+            <button id="toggleCamera">Ввімкнути/Вимкнути камеру</button>
+            <button id="toggleMic">Ввімкнути/Вимкнути мікрофон</button>
+        </div>
+    </div>
+    <div class="video-container" id="user2">
+        <video id="remoteVideo1" autoplay></video>
+        <p>Користувач 2</p>
+    </div>
+    <div class="video-container" id="user3">
+        <video id="remoteVideo2" autoplay></video>
+        <p>Користувач 3</p>
+    </div>
+</div>
 
+<div class="action-buttons">
+    <button id="joinCall">+</button>
+</div>
 
-<video id="localVideo" autoplay muted></video>
-
-<button id="toggleCamera">Ввімкнути / Вимкнути камеру</button>
-
-
+<script src="/socket.io/socket.io.js"></script>
 <script>
     let localStream = null;
-    let videoEnabled = true;  // Прапорець для статусу камери
+    let micEnabled = false;
+    let videoEnabled = false;
 
     // Отримання локального відео та аудіо
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
-            localStream = stream;
-            const localVideo = document.getElementById('localVideo');
-            localVideo.srcObject = stream;  // Прив'язуємо стрім до локального відео
+    const joinCall = () => {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(stream => {
+                localStream = stream;
+                const localVideo = document.getElementById('localVideo');
+                localVideo.srcObject = stream;
 
-            console.log("Локальний відеопотік отримано.");
-        })
-        .catch(error => {
-            console.error('Помилка при доступі до відео/аудіо', error);
-        });
+                localStream.getVideoTracks()[0].enabled = videoEnabled;
+                localStream.getAudioTracks()[0].enabled = micEnabled;
+            })
+            .catch(error => {
+                console.error('Помилка при доступі до відео/аудіо', error);
+            });
+    };
 
     // Функція для ввімкнення/вимкнення камери
     const toggleCamera = () => {
-        if (!localStream) {
-            console.error("Локальний відеопотік ще не готовий.");
-            return;
+        if (localStream) {
+            videoEnabled = !videoEnabled;
+            localStream.getVideoTracks()[0].enabled = videoEnabled;
+            console.log(`Камера ${videoEnabled ? "ввімкнена" : "вимкнена"}`);
         }
-
-        videoEnabled = !videoEnabled;
-        localStream.getVideoTracks().forEach(track => {
-            track.enabled = videoEnabled;  // Включаємо/виключаємо відео
-        });
     };
 
-    // Прив'язка події до кнопки
+    // Функція для ввімкнення/вимкнення мікрофона
+    const toggleMic = () => {
+        if (localStream) {
+            micEnabled = !micEnabled;
+            localStream.getAudioTracks()[0].enabled = micEnabled;
+            console.log(`Мікрофон ${micEnabled ? "ввімкнений" : "вимкнений"}`);
+        }
+    };
+
+    document.getElementById('joinCall').addEventListener('click', joinCall);
     document.getElementById('toggleCamera').addEventListener('click', toggleCamera);
+    document.getElementById('toggleMic').addEventListener('click', toggleMic);
 </script>
 </body>
 </html>

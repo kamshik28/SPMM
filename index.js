@@ -1,19 +1,14 @@
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
-const path = require('path');
 
+// Створення серверу Express
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
 // Сервіс статичних файлів
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Маршрут для головної сторінки
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+app.use(express.static('public'));
 
 // Сокет для обробки підключень
 io.on('connection', socket => {
@@ -33,7 +28,9 @@ io.on('connection', socket => {
     });
 });
 
+// Визначаємо порт і IP
 const PORT = process.env.PORT || 3000;
+
 server.listen(PORT, () => {
     console.log(`Сервер запущено на порту ${PORT}`);
 });
