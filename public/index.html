@@ -10,23 +10,25 @@
 <div class="conference-container">
     <div class="video-container" id="user1">
         <video id="localVideo" autoplay muted></video>
-        <div class="controls">
+        <p id="micStatusUser1" class="hidden">Мікрофон вимкнений</p>
+        <div class="controls hidden" id="controlsUser1">
             <button id="toggleCamera">Ввімкнути/Вимкнути камеру</button>
             <button id="toggleMic">Ввімкнути/Вимкнути мікрофон</button>
         </div>
     </div>
     <div class="video-container" id="user2">
         <video id="remoteVideo1" autoplay></video>
-        <p>Користувач 2</p>
+        <p id="micStatusUser2" class="hidden">Мікрофон вимкнений</p>
     </div>
     <div class="video-container" id="user3">
         <video id="remoteVideo2" autoplay></video>
-        <p>Користувач 3</p>
+        <p id="micStatusUser3" class="hidden">Мікрофон вимкнений</p>
     </div>
 </div>
 
 <div class="action-buttons">
     <button id="joinCall">+</button>
+    <button id="leaveCall" class="hidden">-</button>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -35,28 +37,53 @@
     let micEnabled = false;
     let videoEnabled = false;
 
+    // Перевірка підтримки getUserMedia
+    const hasGetUserMedia = () => {
+        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    };
+
+    if (!hasGetUserMedia()) {
+        alert("Ваш браузер не підтримує getUserMedia. Будь ласка, використовуйте сучасний браузер, як-от Chrome або Firefox.");
+    }
+
     // Отримання локального відео та аудіо
     const joinCall = () => {
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then(stream => {
-                localStream = stream;
-                const localVideo = document.getElementById('localVideo');
-                localVideo.srcObject = stream;
+        if (hasGetUserMedia()) {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                .then(stream => {
+                    localStream = stream;
+                    const localVideo = document.getElementById('localVideo');
+                    localVideo.srcObject = stream;
 
-                localStream.getVideoTracks()[0].enabled = videoEnabled;
-                localStream.getAudioTracks()[0].enabled = micEnabled;
-            })
-            .catch(error => {
-                console.error('Помилка при доступі до відео/аудіо', error);
-            });
+                    // Вимкнемо камеру та мікрофон після приєднання за замовчуванням
+                    localStream.getVideoTracks()[0].enabled = false;
+                    localStream.getAudioTracks()[0].enabled = false;
+                    updateMicStatus('Мікрофон вимкнений');
+
+                    // Показуємо статус мікрофонів та контролі для всіх користувачів
+                    showMicStatusForAllUsers();
+                    showControlsForUser();
+
+                    console.log("Локальний потік отримано.");
+                })
+                .catch(error => {
+                    console.error('Помилка при доступі до відео/аудіо:', error);
+                });
+        } else {
+            console.error('getUserMedia не підтримується в цьому браузері.');
+        }
     };
 
     // Функція для ввімкнення/вимкнення камери
     const toggleCamera = () => {
         if (localStream) {
             videoEnabled = !videoEnabled;
-            localStream.getVideoTracks()[0].enabled = videoEnabled;
+            localStream.getVideoTracks().forEach(track => {
+                track.enabled = videoEnabled;  // Включаємо/вимикаємо всі відеотреки
+            });
             console.log(`Камера ${videoEnabled ? "ввімкнена" : "вимкнена"}`);
+        } else {
+            console.error("Потік ще не отриманий.");
         }
     };
 
@@ -64,12 +91,37 @@
     const toggleMic = () => {
         if (localStream) {
             micEnabled = !micEnabled;
-            localStream.getAudioTracks()[0].enabled = micEnabled;
+            localStream.getAudioTracks().forEach(track => {
+                track.enabled = micEnabled;  // Включаємо/вимикаємо всі аудіотреки
+            });
+            updateMicStatus(micEnabled ? 'Мікрофон увімкнений' : 'Мікрофон вимкнений');
             console.log(`Мікрофон ${micEnabled ? "ввімкнений" : "вимкнений"}`);
+        } else {
+            console.error("Потік ще не отриманий.");
         }
     };
 
+    // Оновлення тексту статусу мікрофона для поточного користувача
+    const updateMicStatus = (status) => {
+        document.getElementById('micStatusUser1').textContent = status;
+    };
+
+    // Показуємо статус мікрофона для всіх користувачів після приєднання
+    const showMicStatusForAllUsers = () => {
+        document.getElementById('micStatusUser1').classList.remove('hidden');
+        document.getElementById('micStatusUser2').classList.remove('hidden');
+        document.getElementById('micStatusUser3').classList.remove('hidden');
+    };
+
+    // Показуємо контролі для поточного користувача після приєднання
+    const showControlsForUser = () => {
+        document.getElementById('controlsUser1').classList.remove('hidden');
+    };
+
+    // Приєднання до виклику
     document.getElementById('joinCall').addEventListener('click', joinCall);
+
+    // Кнопки для камери та мікрофона
     document.getElementById('toggleCamera').addEventListener('click', toggleCamera);
     document.getElementById('toggleMic').addEventListener('click', toggleMic);
 </script>

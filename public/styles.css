@@ -1,3 +1,4 @@
+/* Загальний стиль для сторінки */
 body {
     font-family: Arial, sans-serif;
     background-color: #f0f0f0;
@@ -9,6 +10,7 @@ body {
     height: 100vh;
 }
 
+/* Контейнер для всієї конференції */
 .conference-container {
     display: flex;
     justify-content: space-between;
@@ -19,6 +21,7 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
+/* Стилі для кожного відеоблока */
 .video-container {
     display: flex;
     flex-direction: column;
@@ -29,18 +32,26 @@ body {
     border-radius: 10px;
 }
 
+/* Стиль для відео */
 video {
     width: 100%;
     border-radius: 10px;
-    background-color: gray;
+    background-color: black;
 }
 
+/* Статус мікрофона (прихований за замовчуванням) */
+.hidden {
+    display: none;
+}
+
+/* Контролі під відео */
 .controls {
     margin-top: 10px;
     display: flex;
     gap: 10px;
 }
 
+/* Кнопки для керування */
 button {
     padding: 10px 15px;
     font-size: 14px;
@@ -56,12 +67,14 @@ button:hover {
     background-color: #0056b3;
 }
 
+/* Дії (кнопка "+") */
 .action-buttons {
     position: absolute;
     bottom: 20px;
-    right: 20px;
+
 }
 
+/* Стиль для кнопки "+" */
 #joinCall {
     font-size: 24px;
     padding: 15px;
@@ -72,3 +85,27 @@ button:hover {
 #joinCall:hover {
     background-color: #218838;
 }
+
+/* Стиль для статусу мікрофона */
+#micStatusUser1, #micStatusUser2, #micStatusUser3 {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #333;
+}
+/* Додаємо стилі для кнопки "-" */
+#leaveCall {
+    font-size: 24px;
+    padding: 15px;
+    border-radius: 50%;
+    background-color: #dc3545;
+}
+
+#leaveCall:hover {
+    background-color: #c82333;
+}
+
+/* Прихована кнопка за замовчуванням */
+.hidden {
+    display: none;
+}
+
