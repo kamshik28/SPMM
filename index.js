@@ -7,7 +7,6 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-// Сервіс статичних файлів
 app.use(express.static('public'));
 
 // Сокет для обробки підключень
