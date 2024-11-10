@@ -10,28 +10,36 @@
 <div class="conference-container">
     <div class="video-container" id="user1">
         <video id="localVideo" autoplay muted></video>
-        <p id="micStatusUser1" class="hidden">Мікрофон вимкнений</p>
+        <!-- Кнопки камери та мікрофона приховані за замовчуванням -->
         <div class="controls hidden" id="controlsUser1">
-            <button id="toggleCamera">Ввімкнути/Вимкнути камеру</button>
-            <button id="toggleMic">Ввімкнути/Вимкнути мікрофон</button>
+            <button id="toggleCamera" class="icon-button">
+                <img id="cameraIcon" src="/images/cameraOff.png" alt="Camera Toggle" class="icon">
+            </button>
+            <button id="toggleMic" class="icon-button">
+                <img id="micIcon" src="/images/microoff.png" alt="Mic Toggle" class="icon">
+            </button>
         </div>
     </div>
     <div class="video-container" id="user2">
         <video id="remoteVideo1" autoplay></video>
-        <p id="micStatusUser2" class="hidden">Мікрофон вимкнений</p>
     </div>
     <div class="video-container" id="user3">
         <video id="remoteVideo2" autoplay></video>
-        <p id="micStatusUser3" class="hidden">Мікрофон вимкнений</p>
     </div>
 </div>
 
+<!-- Кнопки для приєднання та виходу з дзвінка -->
 <div class="action-buttons">
-    <button id="joinCall">+</button>
-    <button id="leaveCall" class="hidden">-</button>
+    <button id="joinCall" class="icon-button">
+        <img src="/images/phone-callOn.png" alt="Join Call" class="icon">
+    </button>
+    <button id="leaveCall" class="icon-button hidden">
+        <img src="/images/phone-callOff.png" alt="Leave Call" class="icon">
+    </button>
 </div>
 
+<!-- Підключення socket.io та основного скрипту -->
 <script src="/socket.io/socket.io.js"></script>
-<script src="client.js"></script> <!-- Підключаємо окремий JS-файл для взаємодії з DOM -->
+<script src="client.js"></script>
 </body>
 </html>
