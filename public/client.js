@@ -35,7 +35,8 @@ function startCall(roomId) {
     });
 
     socket.on('signal', async ({ from, signalData }) => {
-        if (!peerConnection && isLocalStreamReady) {
+        // Переконуємося, що PeerConnection створено
+        if (!peerConnection) {
             console.log('Створюємо PeerConnection');
             initializePeerConnection(from, false);
         }
@@ -43,6 +44,10 @@ function startCall(roomId) {
         try {
             if (signalData.type === 'offer') {
                 console.log('Отримано пропозицію (offer)');
+                if (!peerConnection) {
+                    console.error('PeerConnection не створено перед обробкою offer');
+                    return;
+                }
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData));
                 remoteDescriptionSet = true;
                 processIceCandidateQueue();
@@ -51,6 +56,10 @@ function startCall(roomId) {
                 socket.emit('signal', { to: from, signalData: peerConnection.localDescription });
             } else if (signalData.type === 'answer') {
                 console.log('Отримано відповідь (answer)');
+                if (!peerConnection) {
+                    console.error('PeerConnection не створено перед обробкою answer');
+                    return;
+                }
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData));
                 remoteDescriptionSet = true;
                 processIceCandidateQueue();
