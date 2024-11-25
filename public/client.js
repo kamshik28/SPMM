@@ -1,111 +1,88 @@
+const socket = io();
 let localStream = null;
-let micEnabled = false;
-let videoEnabled = false;
+let peerConnection = null;
 
-const hasGetUserMedia = () => {
-    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-};
+// Отримуємо доступ до локальної камери та мікрофона
+navigator.mediaDevices
+    .getUserMedia({ video: true, audio: true })
+    .then((stream) => {
+        localStream = stream;
+        // Встановлюємо локальний відеопотік (себе)
+        document.getElementById('localVideo').srcObject = stream;
+    })
+    .catch((error) => {
+        console.error('Помилка доступу до камери/мікрофона:', error);
+    });
 
-if (!hasGetUserMedia()) {
-    alert("Ваш браузер не підтримує getUserMedia. Будь ласка, використовуйте сучасний браузер, як-от Chrome або Firefox.");
+function startCall(roomId) {
+    // Приєднання до кімнати
+    socket.emit('joinRoom', roomId);
+
+    // Коли інший користувач приєднується до кімнати
+    socket.on('userJoined', (peerId) => {
+        initializePeerConnection(peerId);
+    });
+
+    // Отримання сигналу (WebRTC)
+    socket.on('signal', async ({ from, signalData }) => {
+        if (!peerConnection) {
+            initializePeerConnection(from);
+        }
+
+        // Обробка сигналів WebRTC
+        if (signalData.type === 'offer') {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('signal', { to: from, from: socket.id, signalData: peerConnection.localDescription });
+        } else if (signalData.type === 'answer') {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData));
+        } else if (signalData.candidate) {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(signalData));
+        }
+    });
+
+    // Обробка переповнення кімнати
+    socket.on('roomFull', () => {
+        alert('Кімната вже зайнята двома користувачами.');
+    });
 }
 
-// Функція для приєднання до виклику
-const joinCall = () => {
-    if (hasGetUserMedia()) {
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then(stream => {
-                localStream = stream;
-                const localVideo = document.getElementById('localVideo');
-                localVideo.srcObject = stream;
+// Ініціалізація WebRTC PeerConnection
+function initializePeerConnection(peerId) {
+    peerConnection = new RTCPeerConnection();
 
-                // Вимикаємо відео та аудіо за замовчуванням
-                localStream.getVideoTracks()[0].enabled = false;
-                localStream.getAudioTracks()[0].enabled = false;
-                micEnabled = false;
-                videoEnabled = false;
+    // Передача локальних треків до віддаленого пристрою
+    localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
 
-                showControlsForUser(); // Показуємо кнопки камери та мікрофона
-                console.log("Локальний потік отримано.");
-            })
-            .catch(error => {
-                console.error('Помилка при доступі до відео/аудіо:', error);
-            });
-    } else {
-        console.error('getUserMedia не підтримується в цьому браузері.');
-    }
-};
+    // Отримання медіа-треків від іншого пристрою
+    peerConnection.ontrack = (event) => {
+        const remoteVideo = document.getElementById('remoteVideo');
+        if (!remoteVideo.srcObject) {
+            remoteVideo.srcObject = event.streams[0];
+        }
+    };
 
-// Функція для виходу з виклику
-const leaveCall = () => {
-    console.log("Користувач залишив конференцію.");
-    if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        const localVideo = document.getElementById('localVideo');
-        localVideo.srcObject = null;
-    }
+    // Обробка ICE кандидатів
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            socket.emit('signal', { to: peerId, from: socket.id, signalData: event.candidate });
+        }
+    };
 
-    hideControlsForUser(); // Ховаємо кнопки камери та мікрофона
-};
-
-// Функція для приховування контролів
-const hideControlsForUser = () => {
-    document.getElementById('controlsUser1').classList.add('hidden');
-};
-
-// Функція для показу контролів
-const showControlsForUser = () => {
-    document.getElementById('controlsUser1').classList.remove('hidden');
-};
-
-// Функція для ввімкнення/вимкнення камери
-const toggleCamera = () => {
-    if (localStream && localStream.getVideoTracks().length > 0) {
-        videoEnabled = !videoEnabled;
-        localStream.getVideoTracks().forEach(track => {
-            track.enabled = videoEnabled;
+    // Ініціалізація пропозиції (offer) для нового з'єднання
+    peerConnection.createOffer()
+        .then((offer) => peerConnection.setLocalDescription(offer))
+        .then(() => {
+            socket.emit('signal', { to: peerId, from: socket.id, signalData: peerConnection.localDescription });
         });
+}
 
-        const cameraIcon = document.getElementById('cameraIcon');
-        cameraIcon.src = videoEnabled ? '/images/cameraOn.png' : '/images/cameraOff.png';
-
-        console.log(`Камера ${videoEnabled ? "ввімкнена" : "вимкнена"}`);
-    } else {
-        console.error("Потік відео не отриманий або відсутні відеотреки.");
+// Завершення дзвінка
+function endCall(roomId) {
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
     }
-};
-
-// Функція для ввімкнення/вимкнення мікрофона
-const toggleMic = () => {
-    if (localStream && localStream.getAudioTracks().length > 0) {
-        micEnabled = !micEnabled;
-        localStream.getAudioTracks().forEach(track => {
-            track.enabled = micEnabled;
-        });
-
-        const micIcon = document.getElementById('micIcon');
-        micIcon.src = micEnabled ? '/images/microon.png' : '/images/microoff.png';
-
-        console.log(`Мікрофон ${micEnabled ? "ввімкнений" : "вимкнений"}`);
-    } else {
-        console.error("Потік аудіо не отриманий або відсутні аудіотреки.");
-    }
-};
-
-// Додаємо обробник для кнопки приєднання
-document.getElementById('joinCall').addEventListener('click', () => {
-    joinCall();
-    document.getElementById('joinCall').classList.add('hidden');
-    document.getElementById('leaveCall').classList.remove('hidden');
-});
-
-// Додаємо обробник для кнопки виходу з виклику
-document.getElementById('leaveCall').addEventListener('click', () => {
-    leaveCall();
-    document.getElementById('joinCall').classList.remove('hidden');
-    document.getElementById('leaveCall').classList.add('hidden');
-});
-
-// Додаємо обробники для кнопок камери та мікрофона
-document.getElementById('toggleCamera').addEventListener('click', toggleCamera);
-document.getElementById('toggleMic').addEventListener('click', toggleMic);
+    socket.emit('leaveRoom', roomId);
+}
