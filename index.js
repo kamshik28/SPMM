@@ -7,6 +7,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static('public'));
+app.get('/favicon.ico', (req, res) => res.status(204));
 
 // Обробка WebSocket-з'єднань
 io.on('connection', (socket) => {
