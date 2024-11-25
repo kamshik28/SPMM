@@ -1,6 +1,8 @@
 const socket = io(); // Підключення до Socket.IO
 let localStream = null;
 let peerConnection = null;
+let iceCandidateQueue = []; // Черга для збереження ICE-кандидатів
+let remoteDescriptionSet = false; // Стан, чи встановлений RemoteDescription
 
 // Налаштування ICE-серверів
 const configuration = {
@@ -12,7 +14,7 @@ navigator.mediaDevices
     .getUserMedia({ video: true, audio: true })
     .then((stream) => {
         localStream = stream;
-        document.getElementById('localVideo').srcObject = stream;
+        document.getElementById('localVideo').srcObject = stream; // Показуємо локальне відео
         console.log('Локальний відеопотік отримано');
     })
     .catch((error) => {
@@ -31,19 +33,32 @@ function startCall(roomId) {
 
     socket.on('signal', async ({ from, signalData }) => {
         if (!peerConnection) {
+            console.log('Створюємо PeerConnection');
             initializePeerConnection(from, false);
         }
 
         try {
             if (signalData.type === 'offer') {
+                console.log('Отримано пропозицію (offer)');
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData));
+                remoteDescriptionSet = true; // RemoteDescription встановлений
+                processIceCandidateQueue(); // Обробляємо чергу ICE-кандидатів
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
                 socket.emit('signal', { to: from, signalData: peerConnection.localDescription });
             } else if (signalData.type === 'answer') {
+                console.log('Отримано відповідь (answer)');
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData));
+                remoteDescriptionSet = true; // RemoteDescription встановлений
+                processIceCandidateQueue(); // Обробляємо чергу ICE-кандидатів
             } else if (signalData.candidate) {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(signalData));
+                console.log('Отримано ICE-кандидата');
+                if (remoteDescriptionSet) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(signalData));
+                } else {
+                    console.log('Додаємо ICE-кандидата до черги');
+                    iceCandidateQueue.push(signalData); // Зберігаємо кандидатів у черзі
+                }
             }
         } catch (error) {
             console.error('Помилка обробки сигналу:', error);
@@ -57,8 +72,8 @@ function startCall(roomId) {
 
 // Ініціалізація PeerConnection
 function initializePeerConnection(peerId, isInitiator) {
-    if (peerConnection) {
-        console.warn('З\'єднання вже існує');
+    if (!localStream) {
+        console.error('Локальний потік ще не отримано');
         return;
     }
 
@@ -88,6 +103,17 @@ function initializePeerConnection(peerId, isInitiator) {
             .then(() => {
                 socket.emit('signal', { to: peerId, signalData: peerConnection.localDescription });
             });
+    }
+}
+
+// Обробка черги ICE-кандидатів
+function processIceCandidateQueue() {
+    console.log('Обробляємо чергу ICE-кандидатів:', iceCandidateQueue);
+    while (iceCandidateQueue.length > 0) {
+        const candidate = iceCandidateQueue.shift();
+        peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch((err) => {
+            console.error('Помилка додавання ICE-кандидата:', err);
+        });
     }
 }
 
