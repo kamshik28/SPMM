@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Відеодзвінок</title>
+  <title>Video Call</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
   <video id="localVideo" autoplay muted></video>
   <video id="remoteVideo" autoplay></video>
 </div>
-<button id="endCall" onclick="endCall()">Завершити дзвінок</button>
+<button id="endCall">End Call</button>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="client.js"></script>
@@ -20,10 +20,16 @@
   const roomId = urlParams.get('room');
 
   if (!roomId) {
-    alert('Немає ID кімнати. Додайте ?room=123 до URL.');
+    alert('Room ID is missing. Please add ?room=123 to the URL.');
   } else {
     startCall(roomId);
   }
+
+  // Обробник кнопки "End Call"
+  document.getElementById('endCall').addEventListener('click', () => {
+    endCall(roomId); // Завершити дзвінок
+    window.close(); // Закрити вкладку
+  });
 </script>
 </body>
 </html>
