@@ -12,8 +12,7 @@ navigator.mediaDevices
     .getUserMedia({ video: true, audio: true })
     .then((stream) => {
         localStream = stream;
-        document.getElementById('localVideo').srcObject = stream; // Показуємо своє відео
-        console.log('Локальний відеопотік отримано');
+        document.getElementById('localVideo').srcObject = stream; // Показуємо локальне відео
     })
     .catch((error) => {
         console.error('Помилка доступу до камери/мікрофона:', error);
@@ -24,14 +23,14 @@ navigator.mediaDevices
 function startCall(roomId) {
     socket.emit('joinRoom', roomId); // Повідомляємо сервер про підключення до кімнати
 
-    // Слухаємо події від сервера
     socket.on('userJoined', (peerId) => {
+        console.log('Користувач приєднався:', peerId);
         initializePeerConnection(peerId, true); // Починаємо з'єднання з іншим користувачем
     });
 
     socket.on('signal', async ({ from, signalData }) => {
         if (!peerConnection) {
-            initializePeerConnection(from, false); // Ініціалізуємо з'єднання, якщо воно ще не створене
+            initializePeerConnection(from, false); // Створюємо з'єднання, якщо воно ще не існує
         }
 
         if (signalData.type === 'offer') {
@@ -45,17 +44,13 @@ function startCall(roomId) {
             await peerConnection.addIceCandidate(new RTCIceCandidate(signalData));
         }
     });
-
-    socket.on('roomFull', () => {
-        alert('Кімната вже заповнена двома користувачами.');
-    });
 }
 
 // Ініціалізація PeerConnection
 function initializePeerConnection(peerId, isInitiator) {
     peerConnection = new RTCPeerConnection(configuration);
 
-    // Передаємо локальні треки (камера/мікрофон) до віддаленого пристрою
+    // Додаємо локальні треки
     localStream.getTracks().forEach((track) => {
         peerConnection.addTrack(track, localStream);
     });
@@ -64,19 +59,19 @@ function initializePeerConnection(peerId, isInitiator) {
     peerConnection.ontrack = (event) => {
         const remoteVideo = document.getElementById('remoteVideo');
         if (!remoteVideo.srcObject) {
-            remoteVideo.srcObject = event.streams[0]; // Показуємо віддалене відео
-            console.log('Віддалений відеопотік отримано');
+            remoteVideo.srcObject = event.streams[0];
+            console.log('Отримано віддалений потік');
         }
     };
 
-    // Відправляємо ICE-кандидатів іншому користувачу
+    // Надсилаємо ICE-кандидатів
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
             socket.emit('signal', { to: peerId, signalData: event.candidate });
         }
     };
 
-    // Якщо ми ініціатор (хост), створюємо пропозицію (offer)
+    // Якщо ми ініціатор, створюємо offer
     if (isInitiator) {
         peerConnection.createOffer()
             .then((offer) => peerConnection.setLocalDescription(offer))

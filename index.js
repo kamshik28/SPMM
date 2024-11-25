@@ -8,28 +8,24 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
+// Обробка WebSocket-з'єднань
 io.on('connection', (socket) => {
     console.log(`Користувач підключився: ${socket.id}`);
 
     socket.on('joinRoom', (roomId) => {
-        const clients = io.sockets.adapter.rooms.get(roomId) || new Set();
-        if (clients.size >= 2) {
-            socket.emit('roomFull');
-            return;
-        }
-
+        console.log(`${socket.id} приєднався до кімнати ${roomId}`);
         socket.join(roomId);
-        console.log(`Користувач ${socket.id} приєднався до кімнати ${roomId}`);
-        socket.to(roomId).emit('userJoined', socket.id);
+        socket.to(roomId).emit('userJoined', socket.id); // Повідомляємо інших учасників
     });
 
-    socket.on('signal', ({ to, from, signalData }) => {
-        io.to(to).emit('signal', { from, signalData });
+    socket.on('signal', ({ to, signalData }) => {
+        console.log(`Сигнал від ${socket.id} до ${to}:`, signalData);
+        io.to(to).emit('signal', { from: socket.id, signalData }); // Пересилаємо сигнал
     });
 
     socket.on('leaveRoom', (roomId) => {
+        console.log(`${socket.id} покинув кімнату ${roomId}`);
         socket.leave(roomId);
-        console.log(`Користувач ${socket.id} покинув кімнату ${roomId}`);
     });
 
     socket.on('disconnect', () => {

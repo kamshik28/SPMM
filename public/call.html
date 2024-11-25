@@ -8,8 +8,8 @@
 </head>
 <body>
 <div class="video-container">
-  <video id="localVideo" autoplay muted></video> <!-- Локальне відео -->
-  <video id="remoteVideo" autoplay></video>     <!-- Віддалене відео -->
+  <video id="localVideo" autoplay muted></video>
+  <video id="remoteVideo" autoplay></video>
 </div>
 <button id="endCall" onclick="endCall()">Завершити дзвінок</button>
 
@@ -20,17 +20,9 @@
   const roomId = urlParams.get('room');
 
   if (!roomId) {
-    alert('Немає ID кімнати. Перейдіть на правильний URL.');
+    alert('Немає ID кімнати. Додайте ?room=123 до URL.');
   } else {
-    startCall(roomId); // Запуск відеодзвінка
-  }
-
-  function endCall() {
-    // Завершення дзвінка
-    if (roomId) {
-      endCall(roomId);
-    }
-    alert('Ви завершили дзвінок.');
+    startCall(roomId);
   }
 </script>
 </body>
