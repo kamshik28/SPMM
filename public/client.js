@@ -2,12 +2,18 @@ const socket = io(); // Підключення до Socket.IO
 let localStream = null;
 let peerConnection = null;
 
+// Налаштування ICE-серверів
+const configuration = {
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // STUN-сервер Google
+};
+
 // Запит доступу до камери та мікрофона
 navigator.mediaDevices
     .getUserMedia({ video: true, audio: true })
     .then((stream) => {
         localStream = stream;
-        document.getElementById('localVideo').srcObject = localStream; // Показуємо своє відео
+        document.getElementById('localVideo').srcObject = stream; // Показуємо своє відео
+        console.log('Локальний відеопотік отримано');
     })
     .catch((error) => {
         console.error('Помилка доступу до камери/мікрофона:', error);
@@ -25,7 +31,7 @@ function startCall(roomId) {
 
     socket.on('signal', async ({ from, signalData }) => {
         if (!peerConnection) {
-            initializePeerConnection(from, false);
+            initializePeerConnection(from, false); // Ініціалізуємо з'єднання, якщо воно ще не створене
         }
 
         if (signalData.type === 'offer') {
@@ -47,20 +53,23 @@ function startCall(roomId) {
 
 // Ініціалізація PeerConnection
 function initializePeerConnection(peerId, isInitiator) {
-    peerConnection = new RTCPeerConnection();
+    peerConnection = new RTCPeerConnection(configuration);
 
     // Передаємо локальні треки (камера/мікрофон) до віддаленого пристрою
-    localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
+    localStream.getTracks().forEach((track) => {
+        peerConnection.addTrack(track, localStream);
+    });
 
-    // Обробка отриманого відеопотоку
+    // Отримуємо потік від іншого пристрою
     peerConnection.ontrack = (event) => {
         const remoteVideo = document.getElementById('remoteVideo');
         if (!remoteVideo.srcObject) {
-            remoteVideo.srcObject = event.streams[0];
+            remoteVideo.srcObject = event.streams[0]; // Показуємо віддалене відео
+            console.log('Віддалений відеопотік отримано');
         }
     };
 
-    // Відправка ICE-кандидатів іншому користувачу
+    // Відправляємо ICE-кандидатів іншому користувачу
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
             socket.emit('signal', { to: peerId, signalData: event.candidate });
@@ -84,4 +93,5 @@ function endCall(roomId) {
         peerConnection = null;
     }
     socket.emit('leaveRoom', roomId); // Повідомляємо сервер про вихід
+    console.log('Дзвінок завершено');
 }
