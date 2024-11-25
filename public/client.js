@@ -35,7 +35,11 @@ function startCall(roomId) {
     });
 
     socket.on('signal', async ({ from, signalData }) => {
-        // Переконуємося, що PeerConnection створено
+        if (!isLocalStreamReady) {
+            console.error('Локальний потік ще не готовий, затримуємо обробку сигналу...');
+            await waitForLocalStream();
+        }
+
         if (!peerConnection) {
             console.log('Створюємо PeerConnection');
             initializePeerConnection(from, false);
@@ -44,10 +48,6 @@ function startCall(roomId) {
         try {
             if (signalData.type === 'offer') {
                 console.log('Отримано пропозицію (offer)');
-                if (!peerConnection) {
-                    console.error('PeerConnection не створено перед обробкою offer');
-                    return;
-                }
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData));
                 remoteDescriptionSet = true;
                 processIceCandidateQueue();
@@ -56,10 +56,6 @@ function startCall(roomId) {
                 socket.emit('signal', { to: from, signalData: peerConnection.localDescription });
             } else if (signalData.type === 'answer') {
                 console.log('Отримано відповідь (answer)');
-                if (!peerConnection) {
-                    console.error('PeerConnection не створено перед обробкою answer');
-                    return;
-                }
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(signalData));
                 remoteDescriptionSet = true;
                 processIceCandidateQueue();
@@ -118,6 +114,7 @@ function initializePeerConnection(peerId, isInitiator) {
     }
 }
 
+// Обробка ICE-кандидатів з черги
 function processIceCandidateQueue() {
     console.log('Обробляємо ICE-кандидатів:', iceCandidateQueue);
     while (iceCandidateQueue.length > 0) {
@@ -126,6 +123,18 @@ function processIceCandidateQueue() {
             console.error('Помилка додавання ICE-кандидата:', err);
         });
     }
+}
+
+// Функція для очікування готовності локального потоку
+function waitForLocalStream() {
+    return new Promise((resolve) => {
+        const interval = setInterval(() => {
+            if (isLocalStreamReady) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 100); // Перевіряємо кожні 100 мс
+    });
 }
 
 function endCall(roomId) {
