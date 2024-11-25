@@ -7,28 +7,31 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static('public'));
-app.get('/favicon.ico', (req, res) => res.status(204));
 
-// Обробка WebSocket-з'єднань
+// Обробка з'єднань
 io.on('connection', (socket) => {
     console.log(`Користувач підключився: ${socket.id}`);
 
+    // Підключення до кімнати
     socket.on('joinRoom', (roomId) => {
-        console.log(`${socket.id} приєднався до кімнати ${roomId}`);
         socket.join(roomId);
-        socket.to(roomId).emit('userJoined', socket.id); // Повідомляємо інших учасників
+        console.log(`${socket.id} приєднався до кімнати ${roomId}`);
+        socket.to(roomId).emit('userJoined', socket.id); // Сповіщення інших
     });
 
+    // Пересилання сигналів WebRTC
     socket.on('signal', ({ to, signalData }) => {
         console.log(`Сигнал від ${socket.id} до ${to}:`, signalData);
-        io.to(to).emit('signal', { from: socket.id, signalData }); // Пересилаємо сигнал
+        io.to(to).emit('signal', { from: socket.id, signalData }); // Пересилання сигналу
     });
 
+    // Вихід із кімнати
     socket.on('leaveRoom', (roomId) => {
-        console.log(`${socket.id} покинув кімнату ${roomId}`);
         socket.leave(roomId);
+        console.log(`${socket.id} покинув кімнату ${roomId}`);
     });
 
+    // Відключення клієнта
     socket.on('disconnect', () => {
         console.log(`Користувач відключився: ${socket.id}`);
     });
