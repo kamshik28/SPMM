@@ -2,18 +2,20 @@ const socket = io();
 let localStream = null;
 let peerConnection = null;
 let iceCandidateQueue = []; // Буфер для ICE-кандидатів
-let remoteDescriptionSet = false; // Стан віддаленого опису
+let isLocalStreamReady = false; // Чи готовий локальний потік
+let remoteDescriptionSet = false; // Чи встановлено RemoteDescription
 
 const configuration = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 };
 
-// Запит доступу до камери
+// Запит доступу до камери та мікрофона
 navigator.mediaDevices
     .getUserMedia({ video: true, audio: true })
     .then((stream) => {
         localStream = stream;
         document.getElementById('localVideo').srcObject = stream;
+        isLocalStreamReady = true;
         console.log('Локальний відеопотік отримано');
     })
     .catch((error) => {
@@ -25,11 +27,15 @@ function startCall(roomId) {
 
     socket.on('userJoined', (peerId) => {
         console.log('Користувач приєднався:', peerId);
-        initializePeerConnection(peerId, true);
+        if (isLocalStreamReady) {
+            initializePeerConnection(peerId, true);
+        } else {
+            console.error('Локальний потік ще не готовий, чекаємо...');
+        }
     });
 
     socket.on('signal', async ({ from, signalData }) => {
-        if (!peerConnection) {
+        if (!peerConnection && isLocalStreamReady) {
             console.log('Створюємо PeerConnection');
             initializePeerConnection(from, false);
         }
@@ -66,6 +72,11 @@ function startCall(roomId) {
 function initializePeerConnection(peerId, isInitiator) {
     if (peerConnection) {
         console.warn('PeerConnection вже існує');
+        return;
+    }
+
+    if (!isLocalStreamReady) {
+        console.error('Локальний потік ще не готовий');
         return;
     }
 
