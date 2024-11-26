@@ -177,6 +177,11 @@ function closeConnection() {
         peerConnection.close();
         peerConnection = null;
     }
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+        document.getElementById("localVideo").srcObject = null;
+    }
     if (remoteStream) {
         remoteStream.getTracks().forEach(track => track.stop());
         remoteStream = null;
