@@ -52,8 +52,12 @@ async function startCall(roomId) {
         });
 
         socket.on("userLeft", (userId) => {
-            console.log(`Користувач покинув: ${userId}`);
-            closeConnection();
+            console.log(`Користувач ${userId} покинув кімнату.`);
+            if (remoteStream) {
+                remoteStream.getTracks().forEach(track => track.stop());
+                remoteStream = null;
+                document.getElementById("remoteVideo").srcObject = null;
+            }
         });
 
     } catch (error) {
@@ -173,11 +177,11 @@ function closeConnection() {
         peerConnection.close();
         peerConnection = null;
     }
-    if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
+    if (remoteStream) {
+        remoteStream.getTracks().forEach(track => track.stop());
+        remoteStream = null;
+        document.getElementById("remoteVideo").srcObject = null;
     }
-    remoteStream = null;
-    document.getElementById("remoteVideo").srcObject = null;
 }
 
 // Вимкнення/ввімкнення камери
@@ -200,7 +204,24 @@ function toggleMicrophone() {
 
 // Завершення дзвінка
 function endCall(roomId) {
+    // Сповіщаємо сервер про вихід з кімнати
     socket.emit("leaveRoom", roomId);
-    closeConnection();
+
+    // Закриваємо PeerConnection
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+    }
+
+    // Зупиняємо локальний потік
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+        document.getElementById("localVideo").srcObject = null;
+    }
+
+    // Закриваємо сокет
     socket.disconnect();
+
+    console.log("Дзвінок завершено.");
 }
