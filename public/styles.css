@@ -109,3 +109,30 @@ video {
         flex-direction: column;
     }
 }
+.video-controls {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.video-controls button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    outline: none;
+    padding: 5px;
+    transition: transform 0.2s ease;
+}
+
+.video-controls button img {
+    width: 50px;
+    height: 50px;
+}
+
+.video-controls button:hover {
+    transform: scale(1.1);
+}
+
+
+
