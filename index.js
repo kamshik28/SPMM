@@ -41,13 +41,24 @@ io.on('connection', (socket) => {
     // Вихід із кімнати
     socket.on('leaveRoom', (roomId) => {
         socket.leave(roomId);
-        roomUserCounts[roomId]--;
+        roomUserCounts[roomId]--;  // Зменшуємо кількість користувачів у кімнаті
         console.log(`${socket.id} покинув кімнату ${roomId}`);
+
+        // Сповіщаємо інших користувачів про вихід
+        socket.to(roomId).emit('userLeft', socket.id);
     });
 
     // Відключення клієнта
     socket.on('disconnect', () => {
         console.log(`Користувач відключився: ${socket.id}`);
+
+        // Перевіряємо в яких кімнатах знаходиться цей користувач і зменшуємо їхні лічильники
+        for (let roomId in roomUserCounts) {
+            if (io.sockets.adapter.rooms[roomId] && io.sockets.adapter.rooms[roomId].sockets[socket.id]) {
+                roomUserCounts[roomId]--;
+                console.log(`Користувач ${socket.id} відключився від кімнати ${roomId}`);
+            }
+        }
     });
 });
 
