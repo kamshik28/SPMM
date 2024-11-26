@@ -72,10 +72,33 @@ function startCall(roomId) {
             console.error('Помилка обробки сигналу:', error);
         }
     });
+    socket.on('userLeft', (peerId) => {
+        console.log(`Користувач ${peerId} покинув кімнату`);
+        cleanupPeerConnection(); // Закриваємо старе з'єднання
+    });
+
+    // Обробка ситуації, коли кімната заповнена
     socket.on('roomFull', (roomId) => {
         alert(`Кімната ${roomId} вже заповнена. Спробуйте пізніше.`);
         window.close(); // Закрити вкладку, якщо кімната заповнена
     });
+
+    // Обробник для закриття вкладки
+    window.addEventListener('beforeunload', () => {
+        socket.emit('leaveRoom', roomId); // Відправляємо повідомлення на сервер, коли вкладка закривається
+    });
+
+
+}
+function cleanupPeerConnection() {
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+        const remoteVideo = document.getElementById('remoteVideo');
+        if (remoteVideo) {
+            remoteVideo.srcObject = null; // Очищаємо відеопотік
+        }
+    }
 }
 
 function initializePeerConnection(peerId, isInitiator) {

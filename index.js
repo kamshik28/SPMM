@@ -8,22 +8,19 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-// Зберігаємо кількість користувачів в кожній кімнаті
-const roomUserCounts = {
-    1: 0,
-    2: 0,
-    3: 0
-};
-
 // Обробка з'єднань
 io.on('connection', (socket) => {
     console.log(`Користувач підключився: ${socket.id}`);
 
     // Підключення до кімнати
     socket.on('joinRoom', (roomId) => {
-        if (roomUserCounts[roomId] < 2) {
+        const room = io.sockets.adapter.rooms[roomId];
+
+        // Перевіряємо кількість користувачів у кімнаті
+        const userCount = room ? room.size : 0;
+
+        if (userCount < 2) {
             socket.join(roomId);
-            roomUserCounts[roomId]++;
             console.log(`${socket.id} приєднався до кімнати ${roomId}`);
             socket.to(roomId).emit('userJoined', socket.id); // Сповіщення інших
         } else {
@@ -39,27 +36,26 @@ io.on('connection', (socket) => {
     });
 
     // Вихід із кімнати
+    // Вихід із кімнати
     socket.on('leaveRoom', (roomId) => {
         socket.leave(roomId);
-        roomUserCounts[roomId]--;  // Зменшуємо кількість користувачів у кімнаті
         console.log(`${socket.id} покинув кімнату ${roomId}`);
 
         // Сповіщаємо інших користувачів про вихід
         socket.to(roomId).emit('userLeft', socket.id);
     });
 
-    // Відключення клієнта
+// Відключення клієнта
     socket.on('disconnect', () => {
         console.log(`Користувач відключився: ${socket.id}`);
-
-        // Перевіряємо в яких кімнатах знаходиться цей користувач і зменшуємо їхні лічильники
-        for (let roomId in roomUserCounts) {
-            if (io.sockets.adapter.rooms[roomId] && io.sockets.adapter.rooms[roomId].sockets[socket.id]) {
-                roomUserCounts[roomId]--;
-                console.log(`Користувач ${socket.id} відключився від кімнати ${roomId}`);
+        // Сповіщаємо всіх користувачів кімнати про відключення
+        for (let roomId in socket.rooms) {
+            if (roomId !== socket.id) {
+                socket.to(roomId).emit('userLeft', socket.id);
             }
         }
     });
+
 });
 
 const PORT = process.env.PORT || 3000;
