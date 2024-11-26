@@ -41,6 +41,7 @@ async function startCall(roomId) {
         });
 
         socket.on("signal", async ({ from, signalData }) => {
+            console.log("Отримано сигнал від:", from, "Дані сигналу:", signalData);
             if (signalData.type === "offer") {
                 await handleOffer(signalData, from);
             } else if (signalData.type === "answer") {
@@ -63,8 +64,12 @@ async function startCall(roomId) {
 // Створення пропозиції (offer)
 async function createOffer(userId) {
     peerConnection = new RTCPeerConnection(configuration);
+    console.log("PeerConnection створено. Стан:", peerConnection.signalingState);
 
-    // Додати локальний потік до з'єднання
+    peerConnection.onsignalingstatechange = () => {
+        console.log("Signaling state змінився:", peerConnection.signalingState);
+    };
+
     localStream.getTracks().forEach((track) => {
         peerConnection.addTrack(track, localStream);
     });
@@ -79,6 +84,7 @@ async function createOffer(userId) {
 
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
+            console.log("Надсилання ICE-кандидата:", event.candidate);
             socket.emit("signal", {
                 to: userId,
                 signalData: { candidate: event.candidate },
@@ -88,6 +94,7 @@ async function createOffer(userId) {
 
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
+    console.log("Локальний опис встановлено. Стан:", peerConnection.signalingState);
 
     socket.emit("signal", {
         to: userId,
@@ -98,8 +105,12 @@ async function createOffer(userId) {
 // Обробка пропозиції (offer)
 async function handleOffer(offer, userId) {
     peerConnection = new RTCPeerConnection(configuration);
+    console.log("PeerConnection створено для обробки offer. Стан:", peerConnection.signalingState);
 
-    // Додати локальний потік до з'єднання
+    peerConnection.onsignalingstatechange = () => {
+        console.log("Signaling state змінився:", peerConnection.signalingState);
+    };
+
     localStream.getTracks().forEach((track) => {
         peerConnection.addTrack(track, localStream);
     });
@@ -114,6 +125,7 @@ async function handleOffer(offer, userId) {
 
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
+            console.log("Надсилання ICE-кандидата у відповідь:", event.candidate);
             socket.emit("signal", {
                 to: userId,
                 signalData: { candidate: event.candidate },
@@ -122,9 +134,11 @@ async function handleOffer(offer, userId) {
     };
 
     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+    console.log("Віддалений опис встановлено. Стан:", peerConnection.signalingState);
 
     const answer = await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
+    console.log("Локальний опис (answer) встановлено. Стан:", peerConnection.signalingState);
 
     socket.emit("signal", {
         to: userId,
@@ -135,18 +149,32 @@ async function handleOffer(offer, userId) {
 // Обробка відповіді (answer)
 async function handleAnswer(answer) {
     await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+    console.log("Віддалений опис (answer) встановлено. Стан:", peerConnection.signalingState);
 }
 
 // Обробка кандидатів ICE
-async function handleCandidate(candidate) {
-    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+async function handleCandidate(signalData) {
+    if (signalData.candidate) {
+        try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+            console.log("ICE-кандидат доданий успішно:", signalData.candidate);
+        } catch (error) {
+            console.error("Помилка додавання ICE-кандидата:", error);
+        }
+    } else {
+        console.warn("Отримано порожнього або некоректного кандидата:", signalData);
+    }
 }
 
 // Закриття з'єднання
 function closeConnection() {
     if (peerConnection) {
+        console.log("Закриття PeerConnection");
         peerConnection.close();
         peerConnection = null;
+    }
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
     }
     remoteStream = null;
     document.getElementById("remoteVideo").srcObject = null;
