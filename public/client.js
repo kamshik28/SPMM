@@ -72,6 +72,10 @@ function startCall(roomId) {
             console.error('Помилка обробки сигналу:', error);
         }
     });
+    socket.on('roomFull', (roomId) => {
+        alert(`Кімната ${roomId} вже заповнена. Спробуйте пізніше.`);
+        window.close(); // Закрити вкладку, якщо кімната заповнена
+    });
 }
 
 function initializePeerConnection(peerId, isInitiator) {

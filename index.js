@@ -8,15 +8,28 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
+// Зберігаємо кількість користувачів в кожній кімнаті
+const roomUserCounts = {
+    1: 0,
+    2: 0,
+    3: 0
+};
+
 // Обробка з'єднань
 io.on('connection', (socket) => {
     console.log(`Користувач підключився: ${socket.id}`);
 
     // Підключення до кімнати
     socket.on('joinRoom', (roomId) => {
-        socket.join(roomId);
-        console.log(`${socket.id} приєднався до кімнати ${roomId}`);
-        socket.to(roomId).emit('userJoined', socket.id); // Сповіщення інших
+        if (roomUserCounts[roomId] < 2) {
+            socket.join(roomId);
+            roomUserCounts[roomId]++;
+            console.log(`${socket.id} приєднався до кімнати ${roomId}`);
+            socket.to(roomId).emit('userJoined', socket.id); // Сповіщення інших
+        } else {
+            console.log(`Кімната ${roomId} вже заповнена. Користувач ${socket.id} не може приєднатися.`);
+            socket.emit('roomFull', roomId); // Сповіщення клієнта, що кімната заповнена
+        }
     });
 
     // Пересилання сигналів WebRTC
@@ -28,6 +41,7 @@ io.on('connection', (socket) => {
     // Вихід із кімнати
     socket.on('leaveRoom', (roomId) => {
         socket.leave(roomId);
+        roomUserCounts[roomId]--;
         console.log(`${socket.id} покинув кімнату ${roomId}`);
     });
 
