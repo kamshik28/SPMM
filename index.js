@@ -16,7 +16,7 @@ io.on('connection', (socket) => {
     socket.on('joinRoom', (roomId) => {
         const room = io.sockets.adapter.rooms[roomId];
 
-        // Перевіряємо кількість користувачів у кімнаті
+        // Перевіряємо фактичну кількість користувачів у кімнаті
         const userCount = room ? room.size : 0;
 
         if (userCount < 2) {
@@ -36,27 +36,23 @@ io.on('connection', (socket) => {
     });
 
     // Вихід із кімнати
-    // Вихід із кімнати
     socket.on('leaveRoom', (roomId) => {
         socket.leave(roomId);
         console.log(`${socket.id} покинув кімнату ${roomId}`);
-
-        // Сповіщаємо інших користувачів про вихід
-        socket.to(roomId).emit('userLeft', socket.id);
+        socket.to(roomId).emit('userLeft', socket.id); // Сповіщення інших
     });
 
-// Відключення клієнта
+    // Відключення клієнта
     socket.on('disconnect', () => {
         console.log(`Користувач відключився: ${socket.id}`);
-        // Сповіщаємо всіх користувачів кімнати про відключення
         for (let roomId in socket.rooms) {
             if (roomId !== socket.id) {
-                socket.to(roomId).emit('userLeft', socket.id);
+                socket.to(roomId).emit('userLeft', socket.id); // Сповіщення інших
             }
         }
     });
-
 });
+
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
